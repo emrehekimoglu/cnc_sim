@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VMC-640 Machining Simulator</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="viewport"></div>
+  <div class="vignette"></div>
+
+  <div id="loader"><div class="spinner"></div><span>Initializing machine…</span></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 4h16v4H4zM9 8h6v5H9zM11 13h2v5l-1 2-1-2z" fill="currentColor"/></svg>
+      <div><b>VMC-640</b><span>Machining Simulator</span></div>
+    </div>
+    <div class="prog-title">
+      <span class="ocode" id="ocode">O1001</span>
+      <span id="progName">Bracket Plate</span>
+      <span class="sep">·</span>
+      <span class="op" id="opLabel">READY</span>
+    </div>
+    <div class="top-right">
+      <div class="status" id="status"><i></i><span>READY</span></div>
+      <div class="metric"><label>Cycle</label><b id="cycleTime">00:00</b></div>
+      <div class="metric"><label>Remaining</label><b id="remainTime">--:--</b></div>
+      <div class="metric"><label>Removed</label><b id="removed">0.0 cm³</b></div>
+    </div>
+  </header>
+
+  <aside class="panel left" id="leftPanel">
+    <section>
+      <h3>Programs</h3>
+      <div id="programList" class="prog-list"></div>
+    </section>
+    <section>
+      <h3>Tool Table <span class="hint" id="toolHint"></span></h3>
+      <div id="toolTable" class="tool-table"></div>
+    </section>
+    <section class="stats">
+      <h3>Job</h3>
+      <div class="kv"><span>Material</span><b id="matLabel">—</b></div>
+      <div class="kv"><span>Stock</span><b id="stockLabel">—</b></div>
+      <div class="kv"><span>Blocks</span><b id="blockLabel">—</b></div>
+      <div class="kv"><span>Est. cycle</span><b id="estLabel">—</b></div>
+    </section>
+  </aside>
+
+  <aside class="panel right" id="rightPanel">
+    <section>
+      <h3>Position <span class="seg-toggle" id="coordToggle"><button class="on" data-c="work">WORK</button><button data-c="mach">MACH</button><button data-c="dtg">DTG</button></span></h3>
+      <div class="dro">
+        <div class="axis"><label>X</label><b id="droX">0.000</b><span id="droX2">0.000</span></div>
+        <div class="axis"><label>Y</label><b id="droY">0.000</b><span id="droY2">0.000</span></div>
+        <div class="axis"><label>Z</label><b id="droZ">0.000</b><span id="droZ2">0.000</span></div>
+      </div>
+    </section>
+    <section>
+      <h3>Spindle &amp; Feed</h3>
+      <div class="gauges">
+        <div class="gauge">
+          <label>Spindle</label>
+          <b><span id="rpm">0</span><small>RPM</small></b>
+          <div class="bar"><i id="loadBar"></i></div>
+          <div class="sub"><span>Load</span><span id="loadPct">0%</span></div>
+        </div>
+        <div class="gauge">
+          <label>Feed</label>
+          <b><span id="feed">0</span><small>mm/min</small></b>
+          <div class="bar feedbar"><i id="feedBar"></i></div>
+          <div class="sub"><span>Tool</span><span id="activeTool">T0</span></div>
+        </div>
+      </div>
+      <div class="ovr">
+        <div class="ovr-row"><label>Feed override</label><input type="range" id="feedOvr" min="10" max="200" step="10" value="100"><b id="feedOvrVal">100%</b></div>
+        <div class="ovr-row"><label>Rapid</label>
+          <span class="seg-toggle" id="rapidOvr"><button data-v="0.25">25%</button><button data-v="0.5">50%</button><button class="on" data-v="1">100%</button></span>
+        </div>
+      </div>
+      <div class="modal" id="modal"></div>
+    </section>
+    <section class="code-section">
+      <h3>Program <span class="hint" id="lineHint">N0</span></h3>
+      <div class="code" id="code"><div class="code-inner" id="codeInner"></div></div>
+    </section>
+  </aside>
+
+  <footer class="dock">
+    <div class="transport">
+      <button class="tbtn" id="btnReset" title="Reset (R)">
+        <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg><span>Reset</span>
+      </button>
+      <button class="tbtn start" id="btnStart" title="Cycle start (Space)">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Cycle Start</span>
+      </button>
+      <button class="tbtn hold" id="btnHold" title="Feed hold (Space)">
+        <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg><span>Feed Hold</span>
+      </button>
+      <button class="tbtn toggle" id="btnSingle" title="Single block (B)">
+        <svg viewBox="0 0 24 24"><path d="M5 11h14v2H5z M11 5h2v4h-2z M11 15h2v4h-2z"/></svg><span>Single Block</span>
+      </button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-meta"><span id="progOp">—</span><span id="progPct">0%</span></div>
+      <div class="progress"><i id="progBar"></i></div>
+      <div class="speed">
+        <label>Sim speed</label>
+        <span class="seg-toggle" id="simSpeed">
+          <button data-v="1">1×</button><button data-v="2">2×</button><button class="on" data-v="5">5×</button><button data-v="10">10×</button><button data-v="25">25×</button><button data-v="60">60×</button>
+        </span>
+      </div>
+    </div>
+    <div class="views">
+      <div class="seg-toggle" id="views">
+        <button data-v="iso" class="on">Iso</button><button data-v="front">Front</button><button data-v="top">Top</button><button data-v="close">Close</button><button data-v="wide">Wide</button>
+      </div>
+      <div class="toggles" id="toggles">
+        <button data-t="coolant" class="on" title="Coolant (C)">Coolant</button>
+        <button data-t="chips" class="on">Chips</button>
+        <button data-t="path" title="Toolpath (P)">Toolpath</button>
+        <button data-t="ao" class="on">AO</button>
+        <button data-t="sound" title="Sound (M)">Sound</button>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
